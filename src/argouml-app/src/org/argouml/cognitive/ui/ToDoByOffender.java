@@ -73,99 +73,61 @@ public class ToDoByOffender extends ToDoPerspective
     /*
      * @see org.argouml.cognitive.ToDoListListener#toDoItemsChanged(org.argouml.cognitive.ToDoListEvent)
      */
+    // New helper method
+    private void updateToDoItems(ToDoListEvent tde, boolean isInsert) {
+        LOG.log(Level.FINE, isInsert ? "toDoItemAdded" : "toDoItemsChanged");
+        List<ToDoItem> items = tde.getToDoItemList();
+        Object[] path = new Object[2];
+        path[0] = Designer.theDesigner().getToDoList();
+
+        ListSet allOffenders = Designer.theDesigner().getToDoList().getOffenders();
+        synchronized (allOffenders) {
+            for (Object off : allOffenders) {
+                path[1] = off;
+                int nMatchingItems = 0;
+                synchronized (items) {
+                    for (ToDoItem item : items) {
+                        ListSet offenders = item.getOffenders();
+                        if (!offenders.contains(off)) {
+                            continue;
+                        }
+                        nMatchingItems++;
+                    }
+                }
+                if (nMatchingItems == 0) {
+                    continue;
+                }
+                int[] childIndices = new int[nMatchingItems];
+                Object[] children = new Object[nMatchingItems];
+                nMatchingItems = 0;
+                synchronized (items) {
+                    for (ToDoItem item : items) {
+                        ListSet offenders = item.getOffenders();
+                        if (!offenders.contains(off)) {
+                            continue;
+                        }
+                        childIndices[nMatchingItems] = getIndexOfChild(off, item);
+                        children[nMatchingItems] = item;
+                        nMatchingItems++;
+                    }
+                }
+                if (isInsert) {
+                    fireTreeNodesInserted(this, path, childIndices, children);
+                } else {
+                    fireTreeNodesChanged(this, path, childIndices, children);
+                }
+            }
+        }
+    }
+
+    // Updated methods
     public void toDoItemsChanged(ToDoListEvent tde) {
-        LOG.log(Level.FINE, "toDoItemsChanged");
-        List<ToDoItem> items = tde.getToDoItemList();
-        Object[] path = new Object[2];
-        path[0] = Designer.theDesigner().getToDoList();
-
-        ListSet allOffenders = Designer.theDesigner().getToDoList()
-                .getOffenders();
-        synchronized (allOffenders) {
-            for (Object off : allOffenders) {
-                path[1] = off;
-                int nMatchingItems = 0;
-                synchronized (items) {
-                    for (ToDoItem item : items) {
-                        ListSet offenders = item.getOffenders();
-                        if (!offenders.contains(off)) {
-                            continue;
-                        }
-                        nMatchingItems++;
-                    }
-                }
-                if (nMatchingItems == 0) {
-                    continue;
-                }
-                int[] childIndices = new int[nMatchingItems];
-                Object[] children = new Object[nMatchingItems];
-                nMatchingItems = 0;
-                synchronized (items) {
-                    for (ToDoItem item : items) {
-                        ListSet offenders = item.getOffenders();
-                        if (!offenders.contains(off)) {
-                            continue;
-                        }
-                        childIndices[nMatchingItems] = getIndexOfChild(off,
-                                item);
-                        children[nMatchingItems] = item;
-                        nMatchingItems++;
-                    }
-                }
-                fireTreeNodesChanged(this, path, childIndices, children);
-            }
-        }
+        updateToDoItems(tde, false);
     }
 
-    /*
-     * @see org.argouml.cognitive.ToDoListListener#toDoItemsAdded(org.argouml.cognitive.ToDoListEvent)
-     */
     public void toDoItemsAdded(ToDoListEvent tde) {
-        LOG.log(Level.FINE, "toDoItemAdded");
-        List<ToDoItem> items = tde.getToDoItemList();
-        Object[] path = new Object[2];
-        path[0] = Designer.theDesigner().getToDoList();
-
-        ListSet allOffenders = Designer.theDesigner().getToDoList()
-                .getOffenders();
-        synchronized (allOffenders) {
-            for (Object off : allOffenders) {
-                path[1] = off;
-                int nMatchingItems = 0;
-                // TODO: This first loop just to count the items appears
-                // redundant to me - tfm 20070630
-                synchronized (items) {
-                    for (ToDoItem item : items) {
-                        ListSet offenders = item.getOffenders();
-                        if (!offenders.contains(off)) {
-                            continue;
-                        }
-                        nMatchingItems++;
-                    }
-                }
-                if (nMatchingItems == 0) {
-                    continue;
-                }
-                int[] childIndices = new int[nMatchingItems];
-                Object[] children = new Object[nMatchingItems];
-                nMatchingItems = 0;
-                synchronized (items) {
-                    for (ToDoItem item : items) {
-                        ListSet offenders = item.getOffenders();
-                        if (!offenders.contains(off)) {
-                            continue;
-                        }
-                        childIndices[nMatchingItems] = getIndexOfChild(off,
-                                item);
-                        children[nMatchingItems] = item;
-                        nMatchingItems++;
-                    }
-                }
-                fireTreeNodesInserted(this, path, childIndices, children);
-            }
-        }
+        updateToDoItems(tde, true);
     }
-
     /*
      * @see org.argouml.cognitive.ToDoListListener#toDoItemsRemoved(org.argouml.cognitive.ToDoListEvent)
      */
